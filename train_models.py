@@ -19,12 +19,14 @@ os.makedirs('models', exist_ok=True)
 
 df = pd.read_csv(DATA)
 
-# Drop identifiers (if present)
+# Drop identifiers if exist
 for col in ['name', 'roll']:
     if col in df.columns:
         df = df.drop(columns=[col])
 
-# Define target columns
+# ========================
+# Target Variables
+# ========================
 y_clf = df['placed']
 y_cgpa = df['next_cgpa']
 y_package = df['expected_package']
@@ -32,25 +34,26 @@ y_package = df['expected_package']
 X = df.drop(columns=['placed', 'next_cgpa', 'expected_package'])
 
 # ========================
-# Feature Lists
+# Feature Lists (exact from dataset)
 # ========================
 numeric_features = [
     'semester','current_cgpa','prev_cgpa','attendance','backlogs','arrears_cleared',
-    'Projects_Count','Internship_Count','Hackathons','Research_Work','Python','SQL',
-    'ML','Data_Analysis','Web_Dev','DSA','Cloud','Communication','Teamwork',
-    'Problem_Solving','Leadership','Certifications_Count','Companies_Applied','Shortlisted',
-    'Aptitude_Score','Coding_Score','Mock_Interview_Score','Clubs','Sports',
-    'Leadership_Role','Confidence','Stress_Handling'
+    'Projects_Count','Internship_Count','Hackathons','Research_Work',
+    'Python','SQL','ML','Data_Analysis','Web_Dev','DSA','Cloud',
+    'Communication','Teamwork','Problem_Solving','Leadership',
+    'Certifications_Count','Companies_Applied','Shortlisted',
+    'Aptitude_Score','Coding_Score','Mock_Interview_Score',
+    'Clubs','Sports','Leadership_Role','Confidence','Stress_Handling'
 ]
 
 categorical_features = ['branch','Strongest_Subject','Weakest_Subject','Cert_Type']
 
-# Keep only columns that actually exist
+# Keep only available columns
 numeric_features = [f for f in numeric_features if f in X.columns]
 categorical_features = [f for f in categorical_features if f in X.columns]
 
 # ========================
-# Preprocessing Pipelines
+# Preprocessors
 # ========================
 numeric_transformer = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='median')),
@@ -85,14 +88,14 @@ clf_pipeline = Pipeline(steps=[
 clf_pipeline.fit(X_train, y_clf_train)
 preds = clf_pipeline.predict(X_test)
 proba = clf_pipeline.predict_proba(X_test)[:, 1]
-print("Placement Classifier Accuracy:", accuracy_score(y_clf_test, preds))
-print("Placement Classifier ROC AUC:", roc_auc_score(y_clf_test, proba))
+print("Placement Classifier Accuracy:", round(accuracy_score(y_clf_test, preds), 3))
+print("Placement Classifier ROC AUC:", round(roc_auc_score(y_clf_test, proba), 3))
 
 joblib.dump(clf_pipeline, 'models/placement_clf.pkl')
 print("✅ Saved models/placement_clf.pkl")
 
 # ========================
-# 2) Next Semester CGPA Regressor
+# 2) CGPA Regressor
 # ========================
 cgpa_pipeline = Pipeline(steps=[
     ('pre', preprocessor),
@@ -101,8 +104,8 @@ cgpa_pipeline = Pipeline(steps=[
 
 cgpa_pipeline.fit(X_train, y_cgpa_train)
 cgpa_preds = cgpa_pipeline.predict(X_test)
-print("CGPA reg RMSE:", mean_squared_error(y_cgpa_test, cgpa_preds, squared=False))
-print("CGPA reg R2:", r2_score(y_cgpa_test, cgpa_preds))
+print("CGPA Regressor RMSE:", round(mean_squared_error(y_cgpa_test, cgpa_preds, squared=False), 3))
+print("CGPA Regressor R2:", round(r2_score(y_cgpa_test, cgpa_preds), 3))
 
 joblib.dump(cgpa_pipeline, 'models/cgpa_reg.pkl')
 print("✅ Saved models/cgpa_reg.pkl")
@@ -117,8 +120,8 @@ pkg_pipeline = Pipeline(steps=[
 
 pkg_pipeline.fit(X_train, y_pkg_train)
 pkg_preds = pkg_pipeline.predict(X_test)
-print("Package reg RMSE:", mean_squared_error(y_pkg_test, pkg_preds, squared=False))
-print("Package reg R2:", r2_score(y_pkg_test, pkg_preds))
+print("Package Regressor RMSE:", round(mean_squared_error(y_pkg_test, pkg_preds, squared=False), 3))
+print("Package Regressor R2:", round(r2_score(y_pkg_test, pkg_preds), 3))
 
 joblib.dump(pkg_pipeline, 'models/package_reg.pkl')
 print("✅ Saved models/package_reg.pkl")
