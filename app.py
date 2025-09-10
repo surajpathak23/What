@@ -1,66 +1,56 @@
-import os
 import streamlit as st
 import pandas as pd
-import joblib
-
-# Try to load models, if not available then train them
-def ensure_models():
-    if not (os.path.exists("models/placement_clf.pkl") and 
-            os.path.exists("models/cgpa_reg.pkl") and 
-            os.path.exists("models/package_reg.pkl")):
-        st.warning("⚠️ Models not found! Training models now... Please wait ⏳")
-        import train_models  # directly run training script
-        train_models.main()  # call main() to train
-
-# Call ensure models
-ensure_models()
-
-# Now load the models
-placement_model = joblib.load("models/placement_clf.pkl")
-cgpa_model = joblib.load("models/cgpa_reg.pkl")
-package_model = joblib.load("models/package_reg.pkl")
+import pickle
 
 # Load dataset
 df = pd.read_csv("student_career_data.csv")
 
+# Load models (अगर locally train किए हैं और models/ folder में रखा है तो काम करेगा)
+try:
+    placement_model = pickle.load(open("models/placement_clf.pkl", "rb"))
+    cgpa_model = pickle.load(open("models/cgpa_reg.pkl", "rb"))
+    package_model = pickle.load(open("models/package_reg.pkl", "rb"))
+except:
+    placement_model, cgpa_model, package_model = None, None, None
+
+# Streamlit UI
+st.set_page_config(page_title="Student Career Prediction", layout="wide")
 st.title("🎓 Student Career Prediction App")
-st.sidebar.success("Use the menu to predict outcomes.")
 
-# Sidebar metrics
-st.sidebar.metric("📈 Total Students", len(df))
-st.sidebar.metric("✅ % Placed", f"{round(df['placed'].mean() * 100, 2)}%")
-st.sidebar.metric("🎯 Avg Package", f"{round(df['expected_package'].mean(), 2)} LPA")
+# Sidebar Insights
+st.sidebar.header("📊 Dataset & Insights")
+st.sidebar.metric("Rows in dataset", df.shape[0])
+st.sidebar.metric("Avg CGPA", round(df['Current_CGPA'].mean(), 2))
+st.sidebar.metric("Avg Attendance %", round(df['Attendance_%'].mean(), 2))
+st.sidebar.metric("% Eligible for Placement", f"{round(df['Placement_Eligibility'].mean() * 100, 2)}%")
 
-# Input form
-st.header("🔮 Enter New Student Details for Prediction")
-with st.form("student_form"):
-    semester = st.number_input("Semester", 1, 8, 5)
-    current_cgpa = st.number_input("Current CGPA", 0.0, 10.0, 7.0)
-    prev_cgpa = st.number_input("Previous CGPA", 0.0, 10.0, 7.0)
-    attendance = st.number_input("Attendance %", 0.0, 100.0, 80.0)
-    projects_count = st.number_input("Projects Done", 0, 10, 2)
-    internships_count = st.number_input("Internships", 0, 5, 1)
-    aptitude_score = st.number_input("Aptitude Score", 0, 100, 60)
-    coding_score = st.number_input("Coding Score", 0, 100, 70)
-    submitted = st.form_submit_button("Predict")
+# Main Section
+st.subheader("🔎 Explore Dataset")
+st.dataframe(df.head(10))
 
-if submitted:
-    new_data = pd.DataFrame([{
-        "semester": semester,
-        "current_cgpa": current_cgpa,
-        "prev_cgpa": prev_cgpa,
-        "attendance": attendance,
-        "projects_count": projects_count,
-        "internships_count": internships_count,
-        "aptitude_score": aptitude_score,
-        "coding_score": coding_score
-    }])
+# Prediction Form
+st.subheader("🤖 Make Predictions")
 
-    placement_pred = placement_model.predict(new_data)[0]
-    cgpa_pred = cgpa_model.predict(new_data)[0]
-    package_pred = package_model.predict(new_data)[0]
+name = st.text_input("Student Name")
+roll_no = st.text_input("Roll Number")
+cgpa = st.number_input("Current CGPA", 0.0, 10.0, 7.0)
+attendance = st.number_input("Attendance %", 0.0, 100.0, 75.0)
+projects = st.number_input("No. of Projects", 0, 20, 2)
+internships = st.number_input("No. of Internships", 0, 10, 1)
+aptitude = st.number_input("Aptitude Test Score (0-100)", 0, 100, 60)
+coding = st.number_input("Coding Test Score (0-100)", 0, 100, 50)
 
-    st.subheader("📊 Prediction Results")
-    st.write("✅ Placement Prediction:", "Placed" if placement_pred == 1 else "Not Placed")
-    st.write("📚 Next Semester CGPA Prediction:", round(cgpa_pred, 2))
-    st.write("💰 Expected Package:", f"{round(package_pred, 2)} LPA")
+if st.button("Predict Career Outcome"):
+    features = [[cgpa, attendance, projects, internships, aptitude, coding]]
+    
+    if placement_model and cgpa_model and package_model:
+        placement = placement_model.predict(features)[0]
+        next_cgpa = cgpa_model.predict(features)[0]
+        package = package_model.predict(features)[0]
+
+        st.success(f"📌 Prediction for {name} ({roll_no}):")
+        st.write("✅ Placement Eligibility:", "Yes" if placement == 1 else "No")
+        st.write("📈 Predicted Next CGPA:", round(next_cgpa, 2))
+        st.write("💰 Expected Package (LPA):", round(package, 2))
+    else:
+        st.error("⚠️ Models not found! Please ensure .pkl files are in models/ folder.")
