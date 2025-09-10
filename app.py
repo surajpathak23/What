@@ -2,14 +2,18 @@ import os
 import streamlit as st
 import pandas as pd
 import joblib
-import subprocess
 
-# Ensure models exist, otherwise train them
-if not (os.path.exists("models/placement_clf.pkl") and 
-        os.path.exists("models/cgpa_reg.pkl") and 
-        os.path.exists("models/package_reg.pkl")):
-    st.warning("Models not found! Training models now... Please wait ⏳")
-    subprocess.run(["python", "train_models.py"], check=True)
+# Try to load models, if not available then train them
+def ensure_models():
+    if not (os.path.exists("models/placement_clf.pkl") and 
+            os.path.exists("models/cgpa_reg.pkl") and 
+            os.path.exists("models/package_reg.pkl")):
+        st.warning("⚠️ Models not found! Training models now... Please wait ⏳")
+        import train_models  # directly run training script
+        train_models.main()  # call main() to train
+
+# Call ensure models
+ensure_models()
 
 # Now load the models
 placement_model = joblib.load("models/placement_clf.pkl")
@@ -22,7 +26,7 @@ df = pd.read_csv("student_career_data.csv")
 st.title("🎓 Student Career Prediction App")
 st.sidebar.success("Use the menu to predict outcomes.")
 
-# Show metrics
+# Sidebar metrics
 st.sidebar.metric("📈 Total Students", len(df))
 st.sidebar.metric("✅ % Placed", f"{round(df['placed'].mean() * 100, 2)}%")
 st.sidebar.metric("🎯 Avg Package", f"{round(df['expected_package'].mean(), 2)} LPA")
