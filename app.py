@@ -1,4 +1,3 @@
-# app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -22,31 +21,39 @@ def load_models():
     models['pkg'] = joblib.load(pkg_path)
     return models
 
-# Side: dataset insights if available
+# ============================
+# Sidebar Dataset Insights
+# ============================
 st.sidebar.title("Dataset & Insights 📈")
 if Path("student_career_data.csv").exists():
     df = pd.read_csv("student_career_data.csv")
     st.sidebar.metric("Rows in dataset", len(df))
-    st.sidebar.metric("Avg CGPA", round(df['current_cgpa'].mean(),2))
-    st.sidebar.metric("% placed", f"{round(df['placed'].mean()*100,2)}%")
-    # charts
+    st.sidebar.metric("Avg CGPA", round(df['Current_CGPA'].mean(), 2))
+    st.sidebar.metric("% placed", f"{round(df['Placed'].mean() * 100, 2)}%")
+
     if st.sidebar.checkbox("Show charts in sidebar", value=True):
         fig1, ax1 = plt.subplots()
-        ax1.hist(df['current_cgpa'].dropna(), bins=20)
+        ax1.hist(df['Current_CGPA'].dropna(), bins=20)
         ax1.set_title("CGPA distribution")
         ax1.set_xlabel("CGPA")
         st.sidebar.pyplot(fig1)
 
         fig2, ax2 = plt.subplots()
-        ax2.hist(df.loc[df['placed']==1, 'expected_package'], bins=20)
+        ax2.hist(df.loc[df['Placed'] == 1, 'Expected_Package'], bins=20)
         ax2.set_title("Package (placed students)")
         st.sidebar.pyplot(fig2)
 else:
     st.sidebar.info("No dataset found. Run generate_data.py & train_models.py first to enable dataset insights.")
 
+# ============================
+# Main Title
+# ============================
 st.title("Student Career Prediction System 🎯💼📈")
 st.markdown("Enter student details below — the app will predict placement eligibility, next semester CGPA, and expected package. It will also give actionable personalized recommendations.")
 
+# ============================
+# Input Form
+# ============================
 with st.form("student_form"):
     c1, c2, c3 = st.columns([2,2,1])
     name = c1.text_input("Name")
@@ -106,65 +113,59 @@ with st.form("student_form"):
 
     submitted = st.form_submit_button("Predict 🔮")
 
+# ============================
+# Predictions
+# ============================
 if submitted:
-    # ensure models exist
     if not (clf_path.exists() and cgpa_path.exists() and pkg_path.exists()):
         st.error("Model files not found in models/. Run train_models.py first.")
     else:
         models = load_models()
         input_df = pd.DataFrame([{
-            'branch': branch,
-            'semester': semester,
-            'current_cgpa': current_cgpa,
-            'prev_cgpa': prev_cgpa,
-            'attendance': attendance,
-            'backlogs': backlogs,
-            'arrears_cleared': arrears_cleared,
-            'strongest_subject': st.session_state.get('strongest_subject', 'Algorithms') if 'strongest_subject' in st.session_state else 'Algorithms',
-            'weakest_subject': st.session_state.get('weakest_subject', 'Maths') if 'weakest_subject' in st.session_state else 'Maths',
-            'projects_count': projects_count,
-            'internships_count': internships_count,
-            'hackathons': hackathons,
-            'research_work': research_work,
-            'python': python_s,
-            'sql': sql_s,
-            'ml': ml_s,
-            'data_analysis': data_s,
-            'web_dev': web_s,
-            'dsa': dsa_s,
-            'cloud': cloud_s,
-            'communication': communication,
-            'teamwork': teamwork,
-            'problem_solving': problem_solving,
-            'leadership': leadership,
-            'cert_count': cert_count,
-            'cert_type': cert_type,
-            'companies_applied': companies_applied,
-            'shortlisted': shortlisted,
-            'aptitude_score': aptitude_score,
-            'coding_score': coding_score,
-            'mock_interview_score': mock_interview_score,
-            'clubs': clubs,
-            'sports': sports,
-            'lead_role': lead_role,
-            'confidence': confidence,
-            'stress_handling': stress_handling
+            'Branch': branch,
+            'Semester': semester,
+            'Current_CGPA': current_cgpa,
+            'Previous_CGPA': prev_cgpa,
+            'Attendance_%': attendance,
+            'Backlogs': backlogs,
+            'Arrears_Cleared': arrears_cleared,
+            'Strongest_Subject': 'Algorithms',
+            'Weakest_Subject': 'Maths',
+            'Projects_Count': projects_count,
+            'Internships_Count': internships_count,
+            'Hackathons': hackathons,
+            'Research_Work': research_work,
+            'Python': python_s,
+            'SQL': sql_s,
+            'ML': ml_s,
+            'Data_Analysis': data_s,
+            'Web_Dev': web_s,
+            'DSA': dsa_s,
+            'Cloud': cloud_s,
+            'Communication': communication,
+            'Teamwork': teamwork,
+            'Problem_Solving': problem_solving,
+            'Leadership': leadership,
+            'Cert_Count': cert_count,
+            'Cert_Type': cert_type,
+            'Companies_Applied': companies_applied,
+            'Shortlisted': shortlisted,
+            'Aptitude_Score': aptitude_score,
+            'Coding_Score': coding_score,
+            'Mock_Interview_Score': mock_interview_score,
+            'Clubs': clubs,
+            'Sports': sports,
+            'Lead_Role': lead_role,
+            'Confidence': confidence,
+            'Stress_Handling': stress_handling
         }])
 
-        # Fill missing categorical fields if not present
-        # If model's preprocessor expects strongest/weakest_subject and they don't exist, we add defaults
-        if 'strongest_subject' not in input_df.columns:
-            input_df['strongest_subject'] = 'Algorithms'
-        if 'weakest_subject' not in input_df.columns:
-            input_df['weakest_subject'] = 'Maths'
-
-        # Predictions
         placed_proba = models['clf'].predict_proba(input_df)[:,1][0]
         placed_pred = models['clf'].predict(input_df)[0]
         next_cgpa_pred = models['cgpa'].predict(input_df)[0]
         package_pred = models['pkg'].predict(input_df)[0]
 
-        # UI layout for results
+        # Results
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Placement Eligibility", "Yes" if placed_pred==1 else "No", delta=f"{round(placed_proba*100,2)}% prob")
@@ -182,82 +183,32 @@ if submitted:
         # Recommendations
         st.markdown("### Personalized Recommendations 💡")
         recs = []
-        # Academics
         if current_cgpa < 6.5:
-            recs.append("Focus on core subjects: allocate 2-3 hours daily to weak subjects and use concept-building resources (NPTEL, Coursera).")
+            recs.append("Focus on core subjects: allocate 2-3 hours daily to weak subjects and use concept-building resources.")
         else:
             recs.append("Keep a steady CGPA: continue project work and targeted higher-grade assignments.")
 
-        # DSA / Coding
         if coding_score < 60 or dsa_s < 60:
-            recs.append("Improve coding & DSA: practice on LeetCode/GFG (2 problems/day), follow structured DSA path, participate in weekly mock contests.")
+            recs.append("Improve coding & DSA: practice on LeetCode/GFG (2 problems/day).")
         else:
-            recs.append("Maintain coding practice and do timed mock tests to improve speed.")
+            recs.append("Maintain coding practice with timed mock tests.")
 
-        # Communication / Interview
         if communication < 60 or mock_interview_score < 60:
-            recs.append("Work on communication & interview skills: join mock interview platforms, record and review mock interviews, join Toastmasters or peer mock groups.")
+            recs.append("Work on communication: join mock interviews, Toastmasters, or peer groups.")
         else:
-            recs.append("Polish behavioral answers & prepare company-specific projects for interviews.")
+            recs.append("Polish behavioral answers for interviews.")
 
-        # Projects & Internships
         if projects_count < 2:
-            recs.append("Build 1-2 portfolio projects (GitHub + Readme + deployment) relevant to roles you want.")
+            recs.append("Build 1-2 portfolio projects and deploy them.")
         if internships_count == 0:
-            recs.append("Apply to internships: target small startups and remote micro-internships to gain experience.")
+            recs.append("Apply to internships: startups & micro-internships are good starts.")
 
-        # Soft suggestions
         if confidence < 50:
-            recs.append("Confidence building: do 1-minute daily talks on topics, present projects to peers, and targeted career counseling.")
+            recs.append("Confidence building: do 1-minute daily talks & present projects to peers.")
 
-        # Show bullet list
         for r in recs:
             st.write("•", r)
 
-        # Top 3 tips (bold)
         st.markdown("### Top 3 Actions (Quick Wins) 🔥")
-        top3 = []
-        # choose top three from recs by priority
-        # simple priority heuristic
-        priority = []
-        if current_cgpa < 6.5: priority.append(("Academics", recs[0]))
-        if coding_score < 60 or dsa_s < 60: priority.append(("DSA", recs[1]))
-        if communication < 60 or mock_interview_score < 60: priority.append(("Communication", recs[2]))
-        # add others if less than 3
-        for r in recs:
-            if len(priority) >= 3: break
-            if r not in [p[1] for p in priority]:
-                priority.append(("Other", r))
-        for tag, tip in priority[:3]:
+        for tip in recs[:3]:
             st.markdown(f"**• {tip}**")
-
-        # Bonus charts and breakdown
-        st.markdown("### Detail Breakdown")
-        colA, colB = st.columns([1,1])
-        with colA:
-            st.write("Skill Summary")
-            skills = {
-                'Python': python_s, 'SQL': sql_s, 'ML': ml_s, 'Data': data_s, 'Web': web_s, 'DSA': dsa_s, 'Cloud': cloud_s
-            }
-            sk_df = pd.DataFrame(list(skills.items()), columns=['Skill','Score']).set_index('Skill')
-            st.table(sk_df.T)
-
-        with colB:
-            st.write("Soft Skills Summary")
-            softs = {'Communication': communication, 'Teamwork': teamwork, 'Problem Solving': problem_solving, 'Leadership': leadership}
-            so_df = pd.DataFrame(list(softs.items()), columns=['Soft','Score']).set_index('Soft')
-            st.table(so_df.T)
-
-        # Save prediction history optional
-        if st.button("Save this prediction to local history"):
-            hist_path = Path("predictions_history.csv")
-            rec_text = " | ".join(recs)
-            row = {
-                'name': name, 'roll': roll, 'placed_pred': int(placed_pred), 'placed_proba': float(placed_proba),
-                'next_cgpa': float(next_cgpa_pred), 'package': float(package_pred), 'recs': rec_text
-            }
-            if hist_path.exists():
-                pd.concat([pd.read_csv(hist_path), pd.DataFrame([row])], ignore_index=True).to_csv(hist_path, index=False)
-            else:
-                pd.DataFrame([row]).to_csv(hist_path, index=False)
-            st.success("Saved to predictions_history.csv")
